@@ -10,6 +10,7 @@ except ImportError:
 from pyp2rpm import settings
 from pyp2rpm import exceptions
 
+
 logger = logger = logging.getLogger(__name__)
 
 
@@ -67,14 +68,17 @@ class PypiDownloader(PackageGetter):
                     logger.warn('Specify folder to store a file (SAVE_DIR) or install rpmdevtools.')
         logger.info('Using {0} as directory to save source.'.format(self.save_dir))
 
+
     @property
     def url(self):
         urls = self.client.release_urls(self.name, self.version)
         if urls:
             for url in urls:
+                if url['url'].endswith(".whl"):
+                    whl = url['url']
                 if url['url'].endswith(".tar.gz"):
-                    return url['url']
-            return urls[0]['url']
+                    targz = url['url']
+            return whl or targz or urls[0]['url']
         return self.client.release_data(self.name, self.version)['release_url'] 
 
 

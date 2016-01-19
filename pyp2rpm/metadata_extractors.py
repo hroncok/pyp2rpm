@@ -14,7 +14,6 @@ from pyp2rpm import utils
 
 logger = logging.getLogger(__name__)
 
-
 class LocalMetadataExtractor(object):
 
     """Base class for metadata extractors"""
@@ -415,11 +414,11 @@ class _WheelMetadataExtractor(PypiMetadataExtractor):
 
     @property
     def modules(self):
-        return self.archive.record().get('modules')
+        return self.archive.record.get('modules')
 
     @property
     def scripts(self):
-        return self.archive.record().get('scripts')
+        return self.archive.record.get('scripts')
 
     @property
     def license(self):
@@ -428,6 +427,14 @@ class _WheelMetadataExtractor(PypiMetadataExtractor):
     @property
     def has_test_suite(self):
         return self.json_metadata.get('test_requires', False)
+
+    @property
+    def classifiers(self):
+        return self.json_metadata.get('classifiers', [])
+
+    @property
+    def versions_from_archive(self):
+        return utils.versions_from_trove(self.classifiers)
 
     @property
     def data_from_archive(self):
@@ -452,5 +459,12 @@ class _WheelMetadataExtractor(PypiMetadataExtractor):
         archive_data['scripts'] = self.scripts
         archive_data['license'] = self.license
         archive_data['has_test_suite'] = self.has_test_suite
+        
+        py_vers = self.versions_from_archive
+        archive_data['base_python_version'] = py_vers[0] if py_vers \
+                                        else settings.DEFAULT_PYTHON_VERSION
+        archive_data['python_versions'] = py_vers[1:] if py_vers \
+                                        else [settings.DEFAULT_ADDITIONAL_VERSION]
 
         return archive_data
+

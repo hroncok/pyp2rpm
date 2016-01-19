@@ -306,12 +306,12 @@ class Archive(object):
 
     @property
     def json_wheel_metadata(self):
-        """Simple getter that get content of pydist.json file in .whl archive
+        """Simple getter that get content of metadata.json file in .whl archive
         Returns:
-            metadata from pydist.json in json format
+            metadata from metadata.json in json format
         """
 
-        return json.loads(self.get_content_of_file('pydist.json'))
+        return json.loads(self.get_content_of_file('metadata.json'))
 
     @property
     def record(self):

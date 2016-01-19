@@ -158,6 +158,19 @@ class Convertor(object):
                 'local_file attribute must be set before calling metadata_extractor')
 
         if not hasattr(self, '_metadata_extractor'):
+            logger.info('Using Wheel metadata extractor.')
+            self._metadata_extractor = metadata_extractors._WheelMetadataExtractor(
+                    self.local_file,
+                    self.name,
+                    self.name_convertor,
+                    self.version,
+                    self.client,
+                    self.rpm_name,
+                    self.venv,
+                    self.base_python_version)
+            return self.metadata_extractor
+
+
             if self.pypi:
                 logger.info('Getting metadata from PyPI.')
                 self._metadata_extractor = metadata_extractors.PypiMetadataExtractor(
