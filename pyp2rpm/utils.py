@@ -6,6 +6,7 @@ import sys
 import re
 import copy
 import itertools
+import locale
 
 from pyp2rpm import settings
 
@@ -67,7 +68,7 @@ def versions_from_trove(trove):
             major = ver.split('.')[0].strip()
             if major:
                 versions.add(major)
-    return sorted(versions)
+    return sorted([v for v in versions if v.replace('.', '', 1).isdigit()])
 
 
 def build_srpm(specfile, save_dir):
@@ -124,3 +125,17 @@ def unique_deps(deps):
     """Remove duplicities from deps list of the lists"""
     deps.sort()
     return list(k for k, _ in itertools.groupby(deps))
+
+
+def create_wheel(path = "./"):
+    proc = subprocess.Popen(['python3', path + 'setup.py', 'bdist_wheel', '-d', path], stdout=subprocess.PIPE, 
+                            stderr=subprocess.PIPE)
+
+    stream_data = proc.communicate()
+    stdout_str = stream_data[0].decode(locale.getpreferredencoding())
+    stderr_str = stream_data[1].decode(locale.getpreferredencoding())
+    if proc.returncode:
+        logger.error(stderr_str)
+        raise subprocess.CalledProcessError(cmd='setup.py bdist_wheel', returncode=proc.returncode)
+
+

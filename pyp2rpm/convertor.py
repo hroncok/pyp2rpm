@@ -1,6 +1,8 @@
 import logging
 import os
 import sys
+import glob
+from subprocess import CalledProcessError
 try:
     import urllib2 as urllib
 except ImportError:
@@ -23,6 +25,8 @@ from pyp2rpm import metadata_extractors
 from pyp2rpm import name_convertor
 from pyp2rpm import package_getters
 from pyp2rpm import settings
+from pyp2rpm import utils
+from pyp2rpm import archive
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +148,25 @@ class Convertor(object):
     def local_file(self, value):
         """Setter for local_file attribute
         """
-        self._local_file = value
+        if os.path.splitext(value)[1] == '.whl':
+            self._local_file = value
+        else:
+            try:
+                logger.info("Building wheel using setup.py bdist_wheel command.")
+
+                # removes suffix including .tar.gz
+                base = os.path.splitext(os.path.splitext(value)[0])[0] 
+                unpacked = "/" + os.path.basename(base) + "/"
+                arch = archive.Archive(value)
+                dir_name = os.path.dirname(value) + "/"
+                with arch as a:
+                    a.extract_file("setup.py", directory=dir_name)
+                    utils.create_wheel(dir_name + unpacked)
+
+                self._local_file = glob.glob(dir_name + unpacked + "/*.whl")[0] or value
+            except CalledProcessError:
+                logger.error("Building of wheel failed, setting original archive as local_file.")
+                self._local_file = value
 
     @property
     def metadata_extractor(self):
@@ -158,40 +180,39 @@ class Convertor(object):
                 'local_file attribute must be set before calling metadata_extractor')
 
         if not hasattr(self, '_metadata_extractor'):
-            logger.info('Using Wheel metadata extractor.')
-            self._metadata_extractor = metadata_extractors._WheelMetadataExtractor(
-                    self.local_file,
-                    self.name,
-                    self.name_convertor,
-                    self.version,
-                    self.client,
-                    self.rpm_name,
-                    self.venv,
-                    self.base_python_version)
-            return self.metadata_extractor
-
-
             if self.pypi:
-                logger.info('Getting metadata from PyPI.')
-                self._metadata_extractor = metadata_extractors.PypiMetadataExtractor(
-                    self.local_file,
-                    self.name,
-                    self.name_convertor,
-                    self.version,
-                    self.client,
-                    self.rpm_name,
-                    self.venv,
-                    self.base_python_version)
+                if os.path.splitext(self.local_file)[1] == '.whl':
+                    logger.info('Getting meradata from PyPI, using _WheelMetadataExtractor.')
+                    self._metadata_extractor = metadata_extractors._WheelMetadataExtractor(
+                            self.local_file,
+                            self.name,
+                            self.name_convertor,
+                            self.version,
+                            self.client,
+                            self.rpm_name,
+                            self.venv,
+                            self.base_python_version)
+                else:
+                    logger.info('Getting metadata from PyPI, using PypiMetadataExtractor')
+                    self._metadata_extractor = metadata_extractors.PypiMetadataExtractor(
+                        self.local_file,
+                        self.name,
+                        self.name_convertor,
+                        self.version,
+                        self.client,
+                        self.rpm_name,
+                        self.venv,
+                        self.base_python_version)
             else:
                 logger.info('Getting metadata from local file.')
                 self._metadata_extractor = metadata_extractors.LocalMetadataExtractor(
-                    self.local_file,
-                    self.name,
-                    self.name_convertor,
-                    self.version,
-                    self.rpm_name,
-                    self.venv,
-                    self.base_python_version)
+                self.local_file,
+                self.name,
+                self.name_convertor,
+                self.version,
+                self.rpm_name,
+                self.venv,
+                self.base_python_version)
 
         return self._metadata_extractor
 

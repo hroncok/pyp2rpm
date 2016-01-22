@@ -72,6 +72,8 @@ class PypiDownloader(PackageGetter):
     @property
     def url(self):
         urls = self.client.release_urls(self.name, self.version)
+        whl = None
+        targz = None
         if urls:
             for url in urls:
                 if url['url'].endswith(".whl"):

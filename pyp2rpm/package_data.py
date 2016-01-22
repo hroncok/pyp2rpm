@@ -56,6 +56,8 @@ class PackageData(object):
                     if item not in self.data[name]:
                         self.data[name].append(item)
             elif isinstance(self.data[name], set):
+                if not isinstance(value, set):
+                    value = set(value)
                 self.data[name] |= value
         elif value:
             self.data[name] = value

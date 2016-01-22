@@ -117,6 +117,8 @@ class Archive(object):
 
         return file_cls
 
+
+
     @utils.memoize_by_args
     def get_content_of_file(self, name, full_path=False):  # TODO: log if file can't be opened
         """Returns content of file from archive.
@@ -138,6 +140,17 @@ class Archive(object):
                     return extracted.read().decode(locale.getpreferredencoding())
 
         return None
+
+    def extract_file(self, name, full_path=False, directory="."):
+        """Extract a member from the archive to the specified working directory.
+        Behaviour of name and pull_path is the same as in function get_content_of_file.
+        """
+        if self.handle:
+            for member in self.handle.getmembers():
+                if (full_path and member.name == name)\
+                or (not full_path and os.path.basename(member.name) == name):
+                    self.handle.extract(member, path=directory)   # TODO handle KeyError exception
+
 
     def has_file_with_suffix(self, suffixes):  # TODO: maybe implement this using get_files_re
         """Finds out if there is a file with one of suffixes in the archive.
