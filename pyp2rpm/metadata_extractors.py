@@ -289,8 +289,6 @@ class LocalMetadataExtractor(object):
             data.set_from(self.data_from_archive)
 
         data.set_from(self.data_from_venv, update=True)
-        data.data['build_deps'] += utils.runtime_to_build(data.data['runtime_deps'])
-        setattr(data, "build_deps", utils.unique_deps(data.data['build_deps']))
         # for example nose has attribute `packages` but instead of name listing the pacakges
         # is using function to find them, that makes data.packages an empty set
         if data.has_packages and not data.packages:
@@ -362,10 +360,6 @@ class PypiMetadataExtractor(LocalMetadataExtractor):
 
         setattr(data, "scripts", utils.remove_major_minor_suffix(data.data['scripts']))
         
-        data.data['build_deps'] += utils.runtime_to_build(data.data['runtime_deps'])
-        setattr(data, "build_deps", utils.unique_deps(data.data['build_deps']))
-        # Append all runtime deps to build deps and unique the result
-
         # for example nose has attribute `packages` but instead of name listing the
         # packages is using function to find them, that makes data.packages an empty set
         if data.has_packages and not data.packages:
@@ -388,7 +382,9 @@ class _WheelMetadataExtractor(PypiMetadataExtractor):
 
     @property
     def doc_files(self):
-        return set([doc for doc in self.json_metadata.get('document_names', {}).values()])
+        return set([doc for doc in self.json_metadata.get('extensions', {})
+                                                     .get('python.details', {})
+                                                     .get('document_names', {}).values()])
 
     @property
     def runtime_deps(self):
@@ -426,7 +422,12 @@ class _WheelMetadataExtractor(PypiMetadataExtractor):
 
     @property
     def has_test_suite(self):
-        return self.json_metadata.get('test_requires', False)
+        return self.json_metadata.get('test_requires', False) != False
+
+    @property
+    def has_bundled_egg_info(self):
+        return self.json_metadata.get('egg_info', False) != False
+
 
     @property
     def classifiers(self):
@@ -443,7 +444,6 @@ class _WheelMetadataExtractor(PypiMetadataExtractor):
             dictionary containing metadata extracted from json data
         """
         archive_data = {}
-        archive_data['has_extension'] = self.has_extension
         archive_data['doc_files'] = self.doc_files
         archive_data['has_pth'] = self.has_pth
         archive_data['runtime_deps'] = self.runtime_deps
@@ -459,6 +459,8 @@ class _WheelMetadataExtractor(PypiMetadataExtractor):
         archive_data['scripts'] = self.scripts
         archive_data['license'] = self.license
         archive_data['has_test_suite'] = self.has_test_suite
+        archive_data['has_extension'] = self.has_extension
+        archive_data['has_bundled_egg_info'] = self.has_bundled_egg_info
         
         py_vers = self.versions_from_archive
         archive_data['base_python_version'] = py_vers[0] if py_vers \

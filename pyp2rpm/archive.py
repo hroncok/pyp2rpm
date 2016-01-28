@@ -338,7 +338,7 @@ class Archive(object):
         if self.get_content_of_file('RECORD'):
             lines = self.get_content_of_file('RECORD').splitlines()
             for line in lines:
-                if 'dist-info' in line:
+                if 'dist-info' in line or not '/' in line:
                     continue
                 elif '.data/scripts' in line:
                     script = line.split(',', 1)[0]
