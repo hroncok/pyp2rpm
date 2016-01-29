@@ -85,7 +85,7 @@ ln -sf %{_bindir}/{{ script|script_name_for_python_version(pv) }} %{buildroot}/%
 {%- endfor %}
 {%- if data.py_modules %}
 {% for module in data.py_modules -%}
-{%- if pv == '3' -%}
+{%- if pv == '3' %}
 %dir {{ '%{python2_sitelib}'|sitedir_for_python_version(pv) }}/__pycache__/
 {{ '%{python2_sitelib}'|sitedir_for_python_version(pv) }}/__pycache__/*
 {%- endif %}

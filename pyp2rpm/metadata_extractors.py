@@ -291,8 +291,8 @@ class LocalMetadataExtractor(object):
         data.set_from(self.data_from_venv, update=True)
         # for example nose has attribute `packages` but instead of name listing the pacakges
         # is using function to find them, that makes data.packages an empty set
-        if data.has_packages and not data.packages:
-            data.packages.add(data.name)
+        if data.has_packages and data.packages == "TODO:":
+            data.packages = set([data.name])
 
         return data
 
@@ -349,6 +349,8 @@ class PypiMetadataExtractor(LocalMetadataExtractor):
                            self.version,
                            md5_digest,
                            url)
+
+
         for data_field in settings.PYPI_USABLE_DATA:
             setattr(data, data_field, release_data.get(data_field, ''))
         pypi_license = data.license
@@ -362,8 +364,8 @@ class PypiMetadataExtractor(LocalMetadataExtractor):
         
         # for example nose has attribute `packages` but instead of name listing the
         # packages is using function to find them, that makes data.packages an empty set
-        if data.has_packages and not data.packages:
-            data.packages.add(data.name)
+        if data.has_packages and data.packages == "TODO:":
+            data.packages = set([data.name])
 
         # we usually get better license representation from trove classifiers
         data.license = utils.license_from_trove(
@@ -385,27 +387,28 @@ class _WheelMetadataExtractor(PypiMetadataExtractor):
         return set([doc for doc in self.json_metadata.get('extensions', {})
                                                      .get('python.details', {})
                                                      .get('document_names', {}).values()])
+    def get_requires(self, requires_types):
+        # TODO extras?
+        if not isinstance(requires_types, list):
+            requires_types = list(requires_types)
+        extracted_requires = []
+        for requires_name in requires_types:
+            for requires in self.json_metadata.get(requires_name, []):
+                if 'win' in requires.get('environment', {}):
+                    continue
+                extracted_requires.extend(requires['requires'])
+        return extracted_requires
+
+                
 
     @property
     def runtime_deps(self):
-        # TODO extras?
-        run_requires = []
-        for requires in self.json_metadata.get('run_requires', []):
-            run_requires.extend(requires['requires'])
-        for requires in self.json_metadata.get('meta_requires', []):
-            run_requires.extend(requires['requires'])
-
+        run_requires = self.get_requires(['run_requires', 'meta_requires'])
         return self.name_convert_deps_list(deps_from_pydit_json(run_requires))
 
     @property
     def build_deps(self):
-        # TODO extras?
-        build_requires = []
-        for requires in self.json_metadata.get('build_requires', []):
-            build_requires.extend(requires['requires'])
-        for requires in self.json_metadata.get('test_requires', []):
-            build_requires.extend(requires['requires'])
-
+        build_requires = self.get_requires(['build_requires', 'test_requires'])
         return self.name_convert_deps_list(deps_from_pydit_json(build_requires, runtime=False))
 
     @property
@@ -446,10 +449,10 @@ class _WheelMetadataExtractor(PypiMetadataExtractor):
         archive_data = {}
         archive_data['doc_files'] = self.doc_files
         archive_data['has_pth'] = self.has_pth
-        archive_data['runtime_deps'] = self.runtime_deps
-        archive_data['build_deps'] = [['BuildRequires', 'python2-devel'],
-                                      ['BuildRequires', 'python-setuptools']]\
-                                     + self.build_deps
+        archive_data['runtime_deps'] = utils.unique_deps(self.runtime_deps)
+        archive_data['build_deps'] = utils.unique_deps([['BuildRequires', 'python2-devel'],
+                                                        ['BuildRequires', 'python-setuptools']]\
+                                                        + self.build_deps)
         sphinx_dir = self.sphinx_dir
         if sphinx_dir:
             archive_data['sphinx_dir'] = "/".join(sphinx_dir.split("/")[1:])

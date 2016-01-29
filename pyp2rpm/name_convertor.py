@@ -56,6 +56,8 @@ class NameConvertor(object):
             If for_python is not None, the returned name is in form python%(version)s-%(name)s
         """
         logger.debug('Converting name: {0} to rpm name.'.format(name))
+        if '[' in name:
+            name = name.split('[', 1)[0]
         rpmized_name = name
 
         reg_start = re.compile(r'^python(\d*|)-')

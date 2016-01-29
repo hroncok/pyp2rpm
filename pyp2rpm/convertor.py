@@ -182,7 +182,7 @@ class Convertor(object):
         if not hasattr(self, '_metadata_extractor'):
             if self.pypi:
                 if os.path.splitext(self.local_file)[1] == '.whl':
-                    logger.info('Getting meradata from PyPI, using _WheelMetadataExtractor.')
+                    logger.info('Getting metadata from PyPI, using _WheelMetadataExtractor.')
                     self._metadata_extractor = metadata_extractors._WheelMetadataExtractor(
                             self.local_file,
                             self.name,

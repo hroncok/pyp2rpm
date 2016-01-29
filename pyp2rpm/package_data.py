@@ -37,7 +37,7 @@ class PackageData(object):
             return self.data['name'].replace('-', '_')
         elif name == 'changelog_date_packager':
             return self.get_changelog_date_packager()
-        return self.data.get(name, 'TODO:')
+        return self.data.get(name, "TODO:")
 
     def __setattr__(self, name, value):
         if name == 'summary' and isinstance(value, utils.str_classes):
