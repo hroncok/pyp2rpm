@@ -8,7 +8,7 @@ import pytest
 from flexmock import flexmock
 
 from pyp2rpm.archive import Archive
-from pyp2rpm.metadata_extractors import *
+from pyp2rpm.metadata_extractors import WheelMetadataExtractor, LocalMetadataExtractor, PypiMetadataExtractor
 from pyp2rpm.name_convertor import NameConvertor
 from pyp2rpm import settings
 
@@ -151,4 +151,37 @@ class TestLocalMetadataExtractor(object):
     ])
     def test_extract(self, i, what, expected):
         data = self.e[i].extract_data()
+        assert getattr(data, what) == expected
+
+class TestWheelMetadataExtractor(object):
+    td_dir = '{0}/test_data/'.format(tests_dir)
+    client = flexmock(
+        release_urls = lambda n, v: [{'md5_digest': '9a7a2f6943baba054cf1c28e05a9198e',
+                                      'url': 'http://pypi.python.org/packages/source/r/restsh/restsh-0.1.tar.gz'}],
+        release_data = lambda n, v: {'description': 'UNKNOWN',
+                                     'release_url': 'http://pypi.python.org/pypi/restsh/0.1',
+                                     'classifiers': ['Development Status :: 4 - Beta',
+                                                     'Intended Audience :: Developers',
+                                                     'License :: OSI Approved :: BSD License',
+                                                     'Operating System :: OS Independent'
+                                                     ],
+                                     'license': 'BSD',
+                                     'summary': 'A simple rest shell client',
+                                     'spam': 'eggs and beans'
+                                    }
+    )
+
+    def setup_method(self, method):
+        self.nc = NameConvertor('fedora')
+        self.e = (WheelMetadataExtractor('{0}setuptools-19.6-py2.py3-none-any.whl'.format(
+            self.td_dir), 'setuptools', self.nc, '19.6.2', self.client))
+
+    @pytest.mark.parametrize(('what', 'expected'), [
+        ('doc_files', set(['DESCRIPTION.rst'])),
+        ('has_test_suite', True),
+        ('py_modules', set(['_markerlib', 'pkg_resources', 'setuptools'])),
+        ('runtime_deps', [['Requires', 'python-certifi', '==', '2015.11.20']])
+    ])
+    def test_extract(self, what, expected):
+        data = self.e.extract_data()
         assert getattr(data, what) == expected

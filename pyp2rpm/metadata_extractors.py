@@ -374,7 +374,7 @@ class PypiMetadataExtractor(LocalMetadataExtractor):
         return data
 
 
-class _WheelMetadataExtractor(PypiMetadataExtractor):
+class WheelMetadataExtractor(PypiMetadataExtractor):
 
     @property
     def json_metadata(self):

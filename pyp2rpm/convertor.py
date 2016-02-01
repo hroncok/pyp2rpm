@@ -31,6 +31,7 @@ from pyp2rpm import archive
 logger = logging.getLogger(__name__)
 
 
+
 class Convertor(object):
     """Object that takes care of the actual process of converting the package."""
 
@@ -182,8 +183,8 @@ class Convertor(object):
         if not hasattr(self, '_metadata_extractor'):
             if self.pypi:
                 if os.path.splitext(self.local_file)[1] == '.whl':
-                    logger.info('Getting metadata from PyPI, using _WheelMetadataExtractor.')
-                    self._metadata_extractor = metadata_extractors._WheelMetadataExtractor(
+                    logger.info('Getting metadata from PyPI, using WheelMetadataExtractor.')
+                    self._metadata_extractor = metadata_extractors.WheelMetadataExtractor(
                             self.local_file,
                             self.name,
                             self.name_convertor,
