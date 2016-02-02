@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import glob
+import shutil
 from subprocess import CalledProcessError
 try:
     import urllib2 as urllib
@@ -29,7 +30,6 @@ from pyp2rpm import utils
 from pyp2rpm import archive
 
 logger = logging.getLogger(__name__)
-
 
 
 class Convertor(object):
@@ -155,14 +155,15 @@ class Convertor(object):
             try:
                 logger.info("Building wheel using setup.py bdist_wheel command.")
 
-                # removes suffix including .tar.gz
-                base = os.path.splitext(os.path.splitext(value)[0])[0] 
+                base = os.path.splitext(os.path.splitext(value)[0])[0] # removes suffix including .tar.gz
                 unpacked = "/" + os.path.basename(base) + "/"
                 arch = archive.Archive(value)
                 dir_name = os.path.dirname(value) + "/"
+                self.unpacked_dir = dir_name + unpacked
                 with arch as a:
                     a.extract_file("setup.py", directory=dir_name)
                     utils.create_wheel(dir_name + unpacked)
+
 
                 self._local_file = glob.glob(dir_name + unpacked + "/*.whl")[0] or value
             except CalledProcessError:
@@ -241,6 +242,17 @@ class Convertor(object):
                 self._client = None
 
         return self._client
+    
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            os.remove(self.local_file)
+            if hasattr(self, 'unpacked_dir'):
+                shutil.rmtree(self.unpacked_dir)
+        except FileNotFoundError:
+            logger.warning("Failed to remove local file of directory of unpacked files")
 
 
 class ProxyTransport(xmlrpclib.Transport):

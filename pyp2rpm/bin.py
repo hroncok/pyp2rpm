@@ -80,7 +80,7 @@ def main(package, v, d, r, proxy, srpm, p, b, o, t, venv):
 
     logger.info('Pyp2rpm initialized.')
 
-    convertor = Convertor(package=package,
+    with Convertor(package=package,
                           version=v,
                           save_dir=d,
                           template=t or settings.DEFAULT_TEMPLATE,
@@ -89,42 +89,42 @@ def main(package, v, d, r, proxy, srpm, p, b, o, t, venv):
                           python_versions=p,
                           rpm_name=r,
                           proxy=proxy,
-                          venv=venv)
+                          venv=venv) as convertor:
 
-    logger.debug('Convertor: {0} created. Trying to convert.'.format(convertor))
-    converted = convertor.convert()
-    logger.debug('Convertor: {0} succesfully converted.'.format(convertor))
-
-    if srpm:
-
-        if r:
-            spec_name = r + '.spec'
+        logger.debug('Convertor: {0} created. Trying to convert.'.format(convertor))
+        converted = convertor.convert()
+        logger.debug('Convertor: {0} succesfully converted.'.format(convertor))
+    
+        if srpm:
+    
+            if r:
+                spec_name = r + '.spec'
+            else:
+                spec_name = 'python-' + convertor.name + '.spec'
+            logger.info('Using name: {0} for specfile.'.format(spec_name))
+            if d == settings.DEFAULT_PKG_SAVE_PATH:
+                # default save_path is rpmbuild tree so we want to save spec
+                # in  rpmbuild/SPECS/
+                spec_path = d + '/SPECS/' + spec_name
+            else:
+                # if user provide save_path then save spec in provided path
+                spec_path = d + '/' + spec_name
+            logger.debug('Opening specfile: {0}.'.format(spec_path))
+            with open(spec_path, 'w') as f:
+                f.write(converted)
+                logger.info('Specfile saved at: {0}.'.format(spec_path))
+    
+            msg = utils.build_srpm(spec_path, d)
+            if utils.PY3:
+                logger.info(msg.decode('utf-8'))
+            else:
+                logger.info(msg)
+    
         else:
-            spec_name = 'python-' + convertor.name + '.spec'
-        logger.info('Using name: {0} for specfile.'.format(spec_name))
-        if d == settings.DEFAULT_PKG_SAVE_PATH:
-            # default save_path is rpmbuild tree so we want to save spec
-            # in  rpmbuild/SPECS/
-            spec_path = d + '/SPECS/' + spec_name
-        else:
-            # if user provide save_path then save spec in provided path
-            spec_path = d + '/' + spec_name
-        logger.debug('Opening specfile: {0}.'.format(spec_path))
-        with open(spec_path, 'w') as f:
-            f.write(converted)
-            logger.info('Specfile saved at: {0}.'.format(spec_path))
-
-        msg = utils.build_srpm(spec_path, d)
-        if utils.PY3:
-            logger.info(msg.decode('utf-8'))
-        else:
-            logger.info(msg)
-
-    else:
-        logger.debug('Printing specfile to stdout.')
-        if utils.PY3:
-            print(converted)
-        else:
-            print(converted.encode('utf-8'))
-        logger.debug('Specfile printed.')
-    logger.info("That's all folks!")
+            logger.debug('Printing specfile to stdout.')
+            if utils.PY3:
+                print(converted)
+            else:
+                print(converted.encode('utf-8'))
+            logger.debug('Specfile printed.')
+        logger.info("That's all folks!")

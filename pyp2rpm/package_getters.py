@@ -78,7 +78,7 @@ class PypiDownloader(PackageGetter):
             for url in urls:
                 if url['url'].endswith("none-any.whl"):
                     whl = url['url']
-                if url['url'].endswith(".tar.gz"):
+                if url['url'].endswith((".tar.gz", "tar.bz", ".tar.bz2")):
                     targz = url['url']
             return whl or targz or urls[0]['url']
         return self.client.release_data(self.name, self.version)['release_url'] 
