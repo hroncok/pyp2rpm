@@ -69,30 +69,33 @@ class PypiDownloader(PackageGetter):
         logger.info('Using {0} as directory to save source.'.format(self.save_dir))
 
 
-    @property
-    def url(self):
+    def url(self, wheel=False):
         urls = self.client.release_urls(self.name, self.version)
-        whl = None
-        targz = None
-        if urls:
+        if not wheel:
+            if urls:
+                for url in urls:
+                    if url['url'].endswith((".tar.gz")):
+                        return url['url']
+                return urls[0]['url']
+            return self.client.release_data(self.name, self.version)['release_url'] 
+        else:
             for url in urls:
                 if url['url'].endswith("none-any.whl"):
-                    whl = url['url']
-                if url['url'].endswith((".tar.gz", "tar.bz", ".tar.bz2")):
-                    targz = url['url']
-            return whl or targz or urls[0]['url']
-        return self.client.release_data(self.name, self.version)['release_url'] 
+                    return url['url']
+            return None
 
-
-    def get(self):
+    def get(self, wheel=False):
         """Downloads the package from PyPI.
         Returns:
             Full path of the downloaded file.
         Raises:
             PermissionError if the save_dir is not writable.
         """
-        save_file = '{0}/{1}'.format(self.save_dir, self.url.split('/')[-1])
-        request.urlretrieve(self.url, save_file)
+        url = self.url(wheel)
+        if not url:
+            return None
+        save_file = '{0}/{1}'.format(self.save_dir, url.split('/')[-1])
+        request.urlretrieve(url, save_file)
         logger.info('Downloaded package from PyPI: {0}.'.format(save_file))
         return save_file
 
@@ -122,13 +125,16 @@ class LocalFileGetter(PackageGetter):
                         self.save_dir, self.local_file))
                     logger.warn('Specify folder to store a file or install rpmdevtools.')
 
-    def get(self):
+    def get(self, wheel=False):
         """Copies file from local filesystem to self.save_dir.
         Returns:
             Full path of the copied file.
         Raises:
             EnvironmentError if the file can't be found or the save_dir is not writable.
         """
+        if wheel and not self.local_file.endswith('.whl'):
+            return None
+            
         save_file = '{0}/{1}'.format(
             self.save_dir, os.path.basename(self.local_file))
         if not os.path.exists(save_file) or not os.path.samefile(self.local_file, save_file):

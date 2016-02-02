@@ -69,6 +69,7 @@ class Convertor(object):
         # move file into position
         try:
             local_file = self.getter.get()
+            wheel_file = self.getter.get(wheel=True)
         except (exceptions.NoSuchPackageException, OSError) as e:
             logger.error(
                 'Failed and exiting:', exc_info=True)
@@ -80,6 +81,7 @@ class Convertor(object):
         self.name, self.version = self.getter.get_name_version()
 
         self.local_file = local_file
+        self.wheel_file = wheel_file or self.build_wheel(local_file)
         data = self.metadata_extractor.extract_data()
         
         if self.base_python_version or self.python_versions:
@@ -149,26 +151,25 @@ class Convertor(object):
     def local_file(self, value):
         """Setter for local_file attribute
         """
-        if os.path.splitext(value)[1] == '.whl':
-            self._local_file = value
-        else:
-            try:
-                logger.info("Building wheel using setup.py bdist_wheel command.")
+        self._local_file = value
+            
+    def build_wheel(self, value):
+        logger.info("Building wheel using setup.py bdist_wheel command.")
+        base = os.path.splitext(os.path.splitext(value)[0])[0] # removes suffix including .tar.gz
+        unpacked = "/" + os.path.basename(base) + "/"
+        dir_name = os.path.dirname(value) + "/"
+        self.unpacked_dir = dir_name + unpacked
+        try:
+            arch = archive.Archive(value)
+            with arch as a:
+                a.extract_file("setup.py", directory=dir_name)
+                utils.create_wheel(dir_name + unpacked)
 
-                base = os.path.splitext(os.path.splitext(value)[0])[0] # removes suffix including .tar.gz
-                unpacked = "/" + os.path.basename(base) + "/"
-                arch = archive.Archive(value)
-                dir_name = os.path.dirname(value) + "/"
-                self.unpacked_dir = dir_name + unpacked
-                with arch as a:
-                    a.extract_file("setup.py", directory=dir_name)
-                    utils.create_wheel(dir_name + unpacked)
 
-
-                self._local_file = glob.glob(dir_name + unpacked + "/*.whl")[0] or value
-            except CalledProcessError:
-                logger.error("Building of wheel failed, setting original archive as local_file.")
-                self._local_file = value
+            return glob.glob(dir_name + unpacked + "/*.whl")[0] or value
+        except CalledProcessError:
+            logger.error("Building of wheel failed")
+            return None
 
     @property
     def metadata_extractor(self):
@@ -183,10 +184,10 @@ class Convertor(object):
 
         if not hasattr(self, '_metadata_extractor'):
             if self.pypi:
-                if os.path.splitext(self.local_file)[1] == '.whl':
+                if hasattr(self, 'wheel_file') and self.wheel_file:
                     logger.info('Getting metadata from PyPI, using WheelMetadataExtractor.')
                     self._metadata_extractor = metadata_extractors.WheelMetadataExtractor(
-                            self.local_file,
+                            self.wheel_file,
                             self.name,
                             self.name_convertor,
                             self.version,
@@ -248,11 +249,12 @@ class Convertor(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         try:
-            os.remove(self.local_file)
+            if hasattr(self, 'wheel_file') and self.wheel_file:
+                os.remove(self.wheel_file)
             if hasattr(self, 'unpacked_dir'):
                 shutil.rmtree(self.unpacked_dir)
         except FileNotFoundError:
-            logger.warning("Failed to remove local file of directory of unpacked files")
+            logger.warning("Failed to remove wheel file of directory of unpacked files")
 
 
 class ProxyTransport(xmlrpclib.Transport):
